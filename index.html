@@ -16,12 +16,7 @@
         color: white;
         margin: 0;
     }
-
-    h1 {
-        margin-bottom: 20px;
-        text-shadow: 1px 1px 5px #000;
-    }
-
+    h1 { margin-bottom: 20px; text-shadow: 1px 1px 5px #000; }
     button {
         padding: 12px 24px;
         margin: 10px;
@@ -33,25 +28,19 @@
         cursor: pointer;
         transition: background 0.3s;
     }
-
-    button:hover {
-        background-color: rgba(0,0,0,0.7);
-    }
-
+    button:hover { background-color: rgba(0,0,0,0.7); }
     #timer {
         margin-top: 20px;
         font-size: 24px;
         font-weight: bold;
         text-shadow: 1px 1px 3px #000;
     }
-
     video {
         margin-top: 20px;
         max-width: 80%;
         border: 2px solid white;
         border-radius: 10px;
     }
-
     #downloadBtn {
         padding: 10px 20px;
         margin-top: 10px;
@@ -63,10 +52,7 @@
         cursor: pointer;
         transition: background 0.3s;
     }
-
-    #downloadBtn:hover {
-        background-color: rgba(0,0,0,0.7);
-    }
+    #downloadBtn:hover { background-color: rgba(0,0,0,0.7); }
 </style>
 </head>
 <body>
@@ -82,6 +68,7 @@ let mediaRecorder;
 let recordedChunks = [];
 let timerInterval;
 let seconds = 0;
+let stream;
 
 function updateTimer() {
     seconds++;
@@ -95,7 +82,6 @@ document.getElementById('start').onclick = async () => {
     document.getElementById('start').disabled = true;
     document.getElementById('stop').disabled = true;
 
-    // 3-second countdown
     let countdown = 3;
     document.getElementById('timer').textContent = `Starting in ${countdown}...`;
     const countdownInterval = setInterval(() => {
@@ -112,12 +98,20 @@ document.getElementById('start').onclick = async () => {
 
 async function startRecording() {
     try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: { frameRate: 60, width: 1280, height: 720 },
+        stream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+                frameRate: { ideal: 60, max: 60 },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            },
             audio: true
         });
 
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8,opus' });
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp8,opus',
+            videoBitsPerSecond: 8000000 // 8 Mbps for smoother frames
+        });
+
         recordedChunks = [];
 
         mediaRecorder.ondataavailable = e => {
@@ -129,11 +123,16 @@ async function startRecording() {
             seconds = 0;
             document.getElementById('timer').textContent = '00:00:00';
 
+            // Stop all tracks to end the screen capture indicator
+            stream.getTracks().forEach(track => track.stop());
+
             const blob = new Blob(recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
 
             const preview = document.getElementById('preview');
+            preview.pause();
             preview.src = url;
+            preview.load();
             preview.hidden = false;
             preview.play();
 
@@ -149,8 +148,7 @@ async function startRecording() {
             alert("Recording stopped! Preview ready below.");
         };
 
-        mediaRecorder.start(200); // 200ms chunks for smoother recording
-
+        mediaRecorder.start(100); // smaller chunks → smoother playback
         document.getElementById('stop').disabled = false;
         timerInterval = setInterval(updateTimer, 1000);
 
