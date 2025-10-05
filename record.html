@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ultimate Screen Recorder</title>
+<link rel="icon" href="icon.png" type="image/png">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #00ffff, #8e24aa, #ff69b4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        color: white;
+        margin: 0;
+    }
+
+    h1 {
+        margin-bottom: 20px;
+        text-shadow: 1px 1px 5px #000;
+    }
+
+    button {
+        padding: 12px 24px;
+        margin: 10px;
+        border: none;
+        border-radius: 12px;
+        background-color: rgba(0,0,0,0.5);
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    button:hover {
+        background-color: rgba(0,0,0,0.7);
+    }
+
+    #timer {
+        margin-top: 20px;
+        font-size: 24px;
+        font-weight: bold;
+        text-shadow: 1px 1px 3px #000;
+    }
+
+    video {
+        margin-top: 20px;
+        max-width: 80%;
+        border: 2px solid white;
+        border-radius: 10px;
+    }
+
+    #downloadBtn {
+        padding: 10px 20px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 10px;
+        background-color: rgba(0,0,0,0.5);
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    #downloadBtn:hover {
+        background-color: rgba(0,0,0,0.7);
+    }
+</style>
+</head>
+<body>
+<h1>Ultimate Screen Recorder</h1>
+<button id="start">Start Recording</button>
+<button id="stop" disabled>Stop Recording</button>
+<div id="timer">00:00:00</div>
+<video id="preview" controls hidden></video>
+<button id="downloadBtn" hidden>Download Video</button>
+
+<script>
+let mediaRecorder;
+let recordedChunks = [];
+let timerInterval;
+let seconds = 0;
+
+function updateTimer() {
+    seconds++;
+    const h = String(Math.floor(seconds / 3600)).padStart(2,'0');
+    const m = String(Math.floor((seconds % 3600)/60)).padStart(2,'0');
+    const s = String(seconds % 60).padStart(2,'0');
+    document.getElementById('timer').textContent = `${h}:${m}:${s}`;
+}
+
+document.getElementById('start').onclick = async () => {
+    document.getElementById('start').disabled = true;
+    document.getElementById('stop').disabled = true;
+
+    // 3-second countdown
+    let countdown = 3;
+    document.getElementById('timer').textContent = `Starting in ${countdown}...`;
+    const countdownInterval = setInterval(() => {
+        countdown--;
+        if(countdown > 0){
+            document.getElementById('timer').textContent = `Starting in ${countdown}...`;
+        } else {
+            clearInterval(countdownInterval);
+            document.getElementById('timer').textContent = '00:00:00';
+            startRecording();
+        }
+    }, 1000);
+};
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: 60, width: 1280, height: 720 },
+            audio: true
+        });
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8,opus' });
+        recordedChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+            if(e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            clearInterval(timerInterval);
+            seconds = 0;
+            document.getElementById('timer').textContent = '00:00:00';
+
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+
+            const preview = document.getElementById('preview');
+            preview.src = url;
+            preview.hidden = false;
+            preview.play();
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.hidden = false;
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'recording.webm';
+                a.click();
+            };
+
+            alert("Recording stopped! Preview ready below.");
+        };
+
+        mediaRecorder.start(200); // 200ms chunks for smoother recording
+
+        document.getElementById('stop').disabled = false;
+        timerInterval = setInterval(updateTimer, 1000);
+
+        // Optional: auto-stop after 60 min
+        setTimeout(() => {
+            if(mediaRecorder.state !== "inactive") mediaRecorder.stop();
+        }, 60*60*1000);
+
+    } catch(err) {
+        alert("Recording failed: " + err);
+        document.getElementById('start').disabled = false;
+    }
+}
+
+document.getElementById('stop').onclick = () => {
+    if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    document.getElementById('start').disabled = false;
+    document.getElementById('stop').disabled = true;
+};
+</script>
+</body>
+</html>
