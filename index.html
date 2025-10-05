@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ultimate Screen Recorder</title>
+<title>Ultimate Screen Recorder Pro</title>
 <link rel="icon" href="icon.png" type="image/png">
 <style>
     body {
@@ -11,36 +11,65 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        height: 100vh;
+        justify-content: flex-start;
+        min-height: 100vh;
         color: white;
         margin: 0;
+        padding-top: 40px;
     }
-    h1 { margin-bottom: 20px; text-shadow: 1px 1px 5px #000; }
-    button {
-        padding: 12px 24px;
-        margin: 10px;
+
+    h1 {
+        margin-bottom: 20px;
+        text-shadow: 1px 1px 5px #000;
+    }
+
+    .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    select, button {
+        padding: 10px 16px;
         border: none;
-        border-radius: 12px;
+        border-radius: 10px;
         background-color: rgba(0,0,0,0.5);
         color: white;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
         transition: background 0.3s;
     }
-    button:hover { background-color: rgba(0,0,0,0.7); }
+
+    select:hover, button:hover {
+        background-color: rgba(0,0,0,0.7);
+    }
+
     #timer {
-        margin-top: 20px;
         font-size: 24px;
         font-weight: bold;
         text-shadow: 1px 1px 3px #000;
+        margin-top: 10px;
     }
+
+    #timer.recording {
+        animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+        0% { text-shadow: 0 0 5px cyan; }
+        50% { text-shadow: 0 0 15px cyan; }
+        100% { text-shadow: 0 0 5px cyan; }
+    }
+
     video {
         margin-top: 20px;
         max-width: 80%;
         border: 2px solid white;
         border-radius: 10px;
     }
+
     #downloadBtn {
         padding: 10px 20px;
         margin-top: 10px;
@@ -52,13 +81,34 @@
         cursor: pointer;
         transition: background 0.3s;
     }
-    #downloadBtn:hover { background-color: rgba(0,0,0,0.7); }
+
+    #downloadBtn:hover {
+        background-color: rgba(0,0,0,0.7);
+    }
 </style>
 </head>
 <body>
-<h1>Ultimate Screen Recorder</h1>
-<button id="start">Start Recording</button>
-<button id="stop" disabled>Stop Recording</button>
+<h1>Ultimate Screen Recorder Pro</h1>
+
+<div class="controls">
+    <select id="resolution">
+        <option value="1280x720">720p</option>
+        <option value="1920x1080" selected>1080p</option>
+        <option value="2560x1440">1440p</option>
+        <option value="3840x2160">4K</option>
+    </select>
+
+    <select id="fps">
+        <option value="30">30 FPS</option>
+        <option value="60" selected>60 FPS</option>
+    </select>
+
+    <button id="start">Start Recording</button>
+    <button id="pause" disabled>Pause</button>
+    <button id="resume" disabled>Resume</button>
+    <button id="stop" disabled>Stop</button>
+</div>
+
 <div id="timer">00:00:00</div>
 <video id="preview" controls hidden></video>
 <button id="downloadBtn" hidden>Download Video</button>
@@ -80,7 +130,6 @@ function updateTimer() {
 
 document.getElementById('start').onclick = async () => {
     document.getElementById('start').disabled = true;
-    document.getElementById('stop').disabled = true;
 
     let countdown = 3;
     document.getElementById('timer').textContent = `Starting in ${countdown}...`;
@@ -98,18 +147,21 @@ document.getElementById('start').onclick = async () => {
 
 async function startRecording() {
     try {
+        const [width, height] = document.getElementById('resolution').value.split('x').map(Number);
+        const fps = Number(document.getElementById('fps').value);
+
         stream = await navigator.mediaDevices.getDisplayMedia({
             video: {
-                frameRate: { ideal: 60, max: 60 },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
+                width: { ideal: width },
+                height: { ideal: height },
+                frameRate: { ideal: fps, max: fps }
             },
             audio: true
         });
 
         mediaRecorder = new MediaRecorder(stream, {
             mimeType: 'video/webm;codecs=vp8,opus',
-            videoBitsPerSecond: 8000000 // 8 Mbps for smoother frames
+            videoBitsPerSecond: 8000000
         });
 
         recordedChunks = [];
@@ -118,12 +170,29 @@ async function startRecording() {
             if(e.data.size > 0) recordedChunks.push(e.data);
         };
 
+        mediaRecorder.onstart = () => {
+            timerInterval = setInterval(updateTimer, 1000);
+            document.getElementById('timer').classList.add('recording');
+            document.getElementById('pause').disabled = false;
+            document.getElementById('stop').disabled = false;
+        };
+
+        mediaRecorder.onpause = () => {
+            clearInterval(timerInterval);
+            document.getElementById('timer').classList.remove('recording');
+        };
+
+        mediaRecorder.onresume = () => {
+            timerInterval = setInterval(updateTimer, 1000);
+            document.getElementById('timer').classList.add('recording');
+        };
+
         mediaRecorder.onstop = () => {
             clearInterval(timerInterval);
             seconds = 0;
             document.getElementById('timer').textContent = '00:00:00';
+            document.getElementById('timer').classList.remove('recording');
 
-            // Stop all tracks to end the screen capture indicator
             stream.getTracks().forEach(track => track.stop());
 
             const blob = new Blob(recordedChunks, { type: 'video/webm' });
@@ -145,17 +214,13 @@ async function startRecording() {
                 a.click();
             };
 
-            alert("Recording stopped! Preview ready below.");
+            document.getElementById('pause').disabled = true;
+            document.getElementById('resume').disabled = true;
+            document.getElementById('stop').disabled = true;
+            document.getElementById('start').disabled = false;
         };
 
-        mediaRecorder.start(100); // smaller chunks → smoother playback
-        document.getElementById('stop').disabled = false;
-        timerInterval = setInterval(updateTimer, 1000);
-
-        // Optional: auto-stop after 60 min
-        setTimeout(() => {
-            if(mediaRecorder.state !== "inactive") mediaRecorder.stop();
-        }, 60*60*1000);
+        mediaRecorder.start(100);
 
     } catch(err) {
         alert("Recording failed: " + err);
@@ -163,10 +228,24 @@ async function startRecording() {
     }
 }
 
+document.getElementById('pause').onclick = () => {
+    if(mediaRecorder && mediaRecorder.state === "recording"){
+        mediaRecorder.pause();
+        document.getElementById('pause').disabled = true;
+        document.getElementById('resume').disabled = false;
+    }
+};
+
+document.getElementById('resume').onclick = () => {
+    if(mediaRecorder && mediaRecorder.state === "paused"){
+        mediaRecorder.resume();
+        document.getElementById('pause').disabled = false;
+        document.getElementById('resume').disabled = true;
+    }
+};
+
 document.getElementById('stop').onclick = () => {
     if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-    document.getElementById('start').disabled = false;
-    document.getElementById('stop').disabled = true;
 };
 </script>
 </body>
