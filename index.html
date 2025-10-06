@@ -2,116 +2,60 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ultimate Screen Recorder Pro+</title>
-<link rel="icon" href="icon.png" type="image/png">
+<title>Ultimate Screen Recorder Lite</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #00ffff, #8e24aa, #ff69b4);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        min-height: 100vh;
-        color: white;
-        margin: 0;
-        padding-top: 40px;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #00ffff, #8e24aa);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 30px;
+    color: white;
+    margin: 0;
+}
 
-    h1 {
-        margin-bottom: 20px;
-        text-shadow: 1px 1px 5px #000;
-    }
+.controls, #floatingToolbox {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
 
-    .controls {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
+select, button, label {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+}
 
-    select, button, label {
-        padding: 10px 16px;
-        border: none;
-        border-radius: 10px;
-        background-color: rgba(0,0,0,0.5);
-        color: white;
-        font-size: 14px;
-        cursor: pointer;
-        transition: background 0.3s;
-    }
+select:hover, button:hover, label:hover { background: rgba(0,0,0,0.7); }
 
-    select:hover, button:hover, label:hover {
-        background-color: rgba(0,0,0,0.7);
-    }
+#timer { font-size: 22px; margin-top: 10px; }
 
-    #timer {
-        font-size: 24px;
-        font-weight: bold;
-        text-shadow: 1px 1px 3px #000;
-        margin-top: 10px;
-    }
+video { margin-top: 15px; max-width: 80%; border-radius: 8px; }
 
-    video {
-        margin-top: 20px;
-        max-width: 80%;
-        border: 2px solid white;
-        border-radius: 10px;
-    }
-
-    #downloadBtn {
-        padding: 10px 20px;
-        margin-top: 10px;
-        border: none;
-        border-radius: 10px;
-        background-color: rgba(0,0,0,0.5);
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background 0.3s;
-    }
-
-    #downloadBtn:hover {
-        background-color: rgba(0,0,0,0.7);
-    }
-
-    /* Floating Toolbox */
-    #floatingToolbox {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: rgba(0,0,0,0.7);
-        padding: 8px;
-        border-radius: 12px;
-        display: flex;
-        gap: 8px;
-        z-index: 9999;
-        cursor: move;
-        user-select: none;
-    }
-
-    #floatingToolbox button {
-        background: rgba(255,255,255,0.1);
-        padding: 5px 10px;
-        border-radius: 6px;
-        border: none;
-        color: white;
-        font-size: 13px;
-        cursor: pointer;
-    }
-
-    #floatingToolbox button:hover {
-        background: rgba(255,255,255,0.3);
-    }
-
-    #micToggle {
-        background: rgba(255,255,255,0.1);
-    }
+#floatingToolbox {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 6px;
+    border-radius: 10px;
+    gap: 5px;
+    cursor: move;
+    user-select: none;
+    z-index: 9999;
+}
+#floatingToolbox button { padding: 4px 8px; font-size: 12px; background: rgba(255,255,255,0.1); }
+#floatingToolbox button:hover { background: rgba(255,255,255,0.3); }
 </style>
 </head>
 <body>
-<h1>Ultimate Screen Recorder Pro+</h1>
+<h1>Ultimate Screen Recorder Lite</h1>
 
 <div class="controls">
     <select id="resolution">
@@ -126,19 +70,14 @@
         <option value="60" selected>60 FPS</option>
     </select>
 
-    <label>
-        <input type="checkbox" id="micCheckbox">
-        Mic On
-    </label>
-
-    <button id="start">Start Recording</button>
+    <label><input type="checkbox" id="micCheckbox"> Mic On</label>
+    <button id="start">Start</button>
 </div>
 
 <div id="timer">00:00:00</div>
 <video id="preview" controls hidden></video>
-<button id="downloadBtn" hidden>Download Video</button>
+<button id="downloadBtn" hidden>Download</button>
 
-<!-- Floating toolbox -->
 <div id="floatingToolbox" hidden>
     <button id="pauseBtn">⏸ Pause</button>
     <button id="resumeBtn" disabled>▶ Resume</button>
@@ -147,192 +86,75 @@
 </div>
 
 <script>
-let mediaRecorder;
-let recordedChunks = [];
-let timerInterval;
-let seconds = 0;
-let stream;
-let micStream;
-let mixedStream;
-let micEnabled = false;
-
-const toolbox = document.getElementById('floatingToolbox');
-const pauseBtn = document.getElementById('pauseBtn');
-const resumeBtn = document.getElementById('resumeBtn');
-const stopBtn = document.getElementById('stopBtn');
-const micToggle = document.getElementById('micToggle');
+let mediaRecorder, recordedChunks=[], timerInterval, seconds=0, stream, micStream, mixedStream, micEnabled=false;
+const toolbox=document.getElementById('floatingToolbox'), pauseBtn=document.getElementById('pauseBtn'),
+resumeBtn=document.getElementById('resumeBtn'), stopBtn=document.getElementById('stopBtn'), micToggle=document.getElementById('micToggle');
 
 function updateTimer() {
     seconds++;
-    const h = String(Math.floor(seconds / 3600)).padStart(2,'0');
-    const m = String(Math.floor((seconds % 3600)/60)).padStart(2,'0');
-    const s = String(seconds % 60).padStart(2,'0');
-    document.getElementById('timer').textContent = `${h}:${m}:${s}`;
+    const h=String(Math.floor(seconds/3600)).padStart(2,'0'),
+          m=String(Math.floor((seconds%3600)/60)).padStart(2,'0'),
+          s=String(seconds%60).padStart(2,'0');
+    document.getElementById('timer').textContent=`${h}:${m}:${s}`;
 }
 
-async function getMicStream() {
-    try {
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micEnabled = true;
-    } catch (err) {
-        alert("Mic access denied or unavailable.");
-        micEnabled = false;
-    }
+async function getMic() {
+    try { micStream = await navigator.mediaDevices.getUserMedia({audio:true}); micEnabled=true; }
+    catch { micEnabled=false; }
 }
 
-document.getElementById('start').onclick = async () => {
-    const [width, height] = document.getElementById('resolution').value.split('x').map(Number);
-    const fps = Number(document.getElementById('fps').value);
-    const useMic = document.getElementById('micCheckbox').checked;
+document.getElementById('start').onclick=async()=>{
+    const [w,h]=document.getElementById('resolution').value.split('x').map(Number);
+    const fps=Number(document.getElementById('fps').value), useMic=document.getElementById('micCheckbox').checked;
 
-    try {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-            video: {
-                width: { ideal: width },
-                height: { ideal: height },
-                frameRate: { ideal: fps, max: fps }
-            },
-            audio: true
-        });
+    try{
+        stream=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:w},height:{ideal:h},frameRate:{ideal:fps,max:fps}}, audio:true});
+        if(useMic) await getMic();
 
-        if (useMic) {
-            await getMicStream();
-        }
+        if(micEnabled){
+            const ctx=new AudioContext(), dest=ctx.createMediaStreamDestination();
+            ctx.createMediaStreamSource(stream).connect(dest);
+            ctx.createMediaStreamSource(micStream).connect(dest);
+            mixedStream=new MediaStream([...stream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+        } else mixedStream=stream;
 
-        // Combine screen + mic audio if mic is enabled
-        if (micEnabled) {
-            const context = new AudioContext();
-            const destination = context.createMediaStreamDestination();
+        mediaRecorder=new MediaRecorder(mixedStream,{mimeType:'video/webm;codecs=vp8,opus',videoBitsPerSecond:8000000});
+        recordedChunks=[];
 
-            const screenAudio = context.createMediaStreamSource(stream);
-            screenAudio.connect(destination);
+        mediaRecorder.ondataavailable=e=>{if(e.data.size>0) recordedChunks.push(e.data);}
+        mediaRecorder.onstart=()=>{timerInterval=setInterval(updateTimer,1000); toolbox.hidden=false;}
+        mediaRecorder.onstop=()=>{
+            clearInterval(timerInterval); seconds=0; document.getElementById('timer').textContent='00:00:00';
+            stream.getTracks().forEach(t=>t.stop());
+            if(micStream) micStream.getTracks().forEach(t=>t.stop());
+            toolbox.hidden=true; pauseBtn.disabled=false; resumeBtn.disabled=true;
 
-            const micAudio = context.createMediaStreamSource(micStream);
-            micAudio.connect(destination);
-
-            mixedStream = new MediaStream([...stream.getVideoTracks(), ...destination.stream.getAudioTracks()]);
-        } else {
-            mixedStream = stream;
-        }
-
-        mediaRecorder = new MediaRecorder(mixedStream, {
-            mimeType: 'video/webm;codecs=vp8,opus',
-            videoBitsPerSecond: 8000000
-        });
-
-        recordedChunks = [];
-
-        mediaRecorder.ondataavailable = e => {
-            if(e.data.size > 0) recordedChunks.push(e.data);
-        };
-
-        mediaRecorder.onstart = () => {
-            timerInterval = setInterval(updateTimer, 1000);
-            toolbox.hidden = false;
-        };
-
-        mediaRecorder.onstop = () => {
-            clearInterval(timerInterval);
-            seconds = 0;
-            document.getElementById('timer').textContent = '00:00:00';
-
-            stream.getTracks().forEach(t => t.stop());
-            if (micStream) micStream.getTracks().forEach(t => t.stop());
-
-            toolbox.hidden = true;
-            resumeBtn.disabled = true;
-            pauseBtn.disabled = false;
-
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const preview = document.getElementById('preview');
-            preview.src = url;
-            preview.hidden = false;
-            preview.play();
-
-            const dl = document.getElementById('downloadBtn');
-            dl.hidden = false;
-            dl.onclick = () => {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'recording.webm';
-                a.click();
-            };
+            const blob=new Blob(recordedChunks,{type:'video/webm'}), url=URL.createObjectURL(blob);
+            const preview=document.getElementById('preview');
+            preview.src=url; preview.hidden=false; preview.play();
+            const dl=document.getElementById('downloadBtn'); dl.hidden=false;
+            dl.onclick=()=>{const a=document.createElement('a'); a.href=url; a.download='recording.webm'; a.click();}
         };
 
         mediaRecorder.start(100);
-        document.getElementById('start').disabled = true;
-
-    } catch (err) {
-        alert("Recording failed: " + err);
-    }
+        document.getElementById('start').disabled=true;
+    }catch(e){alert("Recording failed: "+e);}
 };
 
-// Toolbox buttons
-pauseBtn.onclick = () => {
-    if (mediaRecorder.state === "recording") {
-        mediaRecorder.pause();
-        pauseBtn.disabled = true;
-        resumeBtn.disabled = false;
-    }
+pauseBtn.onclick=()=>{if(mediaRecorder.state==="recording"){mediaRecorder.pause(); pauseBtn.disabled=true; resumeBtn.disabled=false;}}
+resumeBtn.onclick=()=>{if(mediaRecorder.state==="paused"){mediaRecorder.resume(); pauseBtn.disabled=false; resumeBtn.disabled=true;}}
+stopBtn.onclick=()=>{if(mediaRecorder.state!=="inactive"){mediaRecorder.stop(); document.getElementById('start').disabled=false;}}
+
+micToggle.onclick=async()=>{
+    if(!micEnabled){await getMic(); if(micEnabled){alert("Mic ON");}} 
+    else {micStream.getTracks().forEach(t=>t.stop()); micEnabled=false; alert("Mic OFF");}
 };
 
-resumeBtn.onclick = () => {
-    if (mediaRecorder.state === "paused") {
-        mediaRecorder.resume();
-        pauseBtn.disabled = false;
-        resumeBtn.disabled = true;
-    }
-};
-
-stopBtn.onclick = () => {
-    if (mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-        document.getElementById('start').disabled = false;
-    }
-};
-
-micToggle.onclick = async () => {
-    if (!micEnabled) {
-        await getMicStream();
-        if (micEnabled) {
-            const context = new AudioContext();
-            const destination = context.createMediaStreamDestination();
-            const screenAudio = context.createMediaStreamSource(stream);
-            screenAudio.connect(destination);
-            const micAudio = context.createMediaStreamSource(micStream);
-            micAudio.connect(destination);
-            mixedStream = new MediaStream([...stream.getVideoTracks(), ...destination.stream.getAudioTracks()]);
-            alert("Mic turned ON (affects new audio chunks)");
-        }
-    } else {
-        micStream.getTracks().forEach(t => t.stop());
-        micEnabled = false;
-        alert("Mic turned OFF");
-    }
-};
-
-// Make toolbox draggable
-(function makeDraggable(el) {
-    let isDragging = false;
-    let offsetX, offsetY;
-
-    el.addEventListener('mousedown', e => {
-        isDragging = true;
-        offsetX = e.clientX - el.getBoundingClientRect().left;
-        offsetY = e.clientY - el.getBoundingClientRect().top;
-    });
-
-    document.addEventListener('mousemove', e => {
-        if (isDragging) {
-            el.style.left = e.clientX - offsetX + 'px';
-            el.style.top = e.clientY - offsetY + 'px';
-            el.style.right = 'auto';
-        }
-    });
-
-    document.addEventListener('mouseup', () => isDragging = false);
-})(toolbox);
+// Draggable toolbox
+(function(el){let dragging=false, offsetX, offsetY;
+el.addEventListener('mousedown',e=>{dragging=true; offsetX=e.clientX-el.getBoundingClientRect().left; offsetY=e.clientY-el.getBoundingClientRect().top;});
+document.addEventListener('mousemove',e=>{if(dragging){el.style.left=e.clientX-offsetX+'px'; el.style.top=e.clientY-offsetY+'px'; el.style.right='auto';}});
+document.addEventListener('mouseup',()=>dragging=false);})(toolbox);
 </script>
 </body>
 </html>
